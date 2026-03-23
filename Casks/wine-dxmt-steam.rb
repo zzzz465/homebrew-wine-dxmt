@@ -71,6 +71,83 @@ if [[ "$1" == "--set-prefix" ]]; then
   exit 0
 fi
 
+if [[ "$1" == "add-game" ]]; then
+  APPID="$2"
+  if [[ -z "$APPID" ]]; then
+    echo "Usage: wine-dxmt-steam add-game <appid> [display-name]"
+    echo "Example: wine-dxmt-steam add-game 960170 DJMax"
+    exit 1
+  fi
+  DISPLAY_NAME="${3:-Game $APPID}"
+  SAFE_NAME=$(echo "$DISPLAY_NAME" | sed 's/[^a-zA-Z0-9]//g')
+  APP_DIR="$HOME/Applications/${DISPLAY_NAME}.app"
+
+  # Fetch game name from Steam API if no display name given
+  if [[ -z "$3" ]]; then
+    API_NAME=$(curl -s "https://store.steampowered.com/api/appdetails?appids=${APPID}" \
+      | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+    if [[ -n "$API_NAME" ]]; then
+      DISPLAY_NAME="$API_NAME"
+      SAFE_NAME=$(echo "$DISPLAY_NAME" | sed 's/[^a-zA-Z0-9]//g')
+      APP_DIR="$HOME/Applications/${DISPLAY_NAME}.app"
+    fi
+  fi
+
+  echo "Creating app for: $DISPLAY_NAME (AppID: $APPID)"
+
+  # Download icon
+  ICON_URL="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${APPID}/header.jpg"
+  ICON_TMP="/tmp/wine-dxmt-icon-${APPID}"
+  mkdir -p "${ICON_TMP}.iconset"
+  curl -sL "$ICON_URL" -o "${ICON_TMP}.jpg"
+
+  if [[ ! -s "${ICON_TMP}.jpg" ]]; then
+    echo "Warning: Could not download icon."
+  else
+    for size in 512 256 128 64 32 16; do
+      sips -s format png -z $size $size "${ICON_TMP}.jpg" \
+        --out "${ICON_TMP}.iconset/icon_${size}x${size}.png" >/dev/null 2>&1
+    done
+    iconutil -c icns "${ICON_TMP}.iconset" -o "${ICON_TMP}.icns" 2>/dev/null
+  fi
+
+  # Create .app bundle
+  mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+  cat > "$APP_DIR/Contents/MacOS/launch" << LAUNCH
+#!/bin/bash
+exec /usr/local/bin/wine-dxmt-steam -applaunch $APPID
+LAUNCH
+  chmod +x "$APP_DIR/Contents/MacOS/launch"
+
+  cat > "$APP_DIR/Contents/Info.plist" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>${DISPLAY_NAME}</string>
+    <key>CFBundleExecutable</key>
+    <string>launch</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.wine-dxmt.game.${APPID}</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleIconFile</key>
+    <string>icon</string>
+</dict>
+</plist>
+PLIST
+
+  if [[ -f "${ICON_TMP}.icns" ]]; then
+    cp "${ICON_TMP}.icns" "$APP_DIR/Contents/Resources/icon.icns"
+  fi
+  rm -rf "${ICON_TMP}.jpg" "${ICON_TMP}.iconset" "${ICON_TMP}.icns"
+
+  echo "Created: $APP_DIR"
+  echo "You can find it in ~/Applications or search Spotlight."
+  exit 0
+fi
+
 # Resolve prefix: env > config > default
 if [[ -n "$WINEPREFIX" ]]; then
   PREFIX="$WINEPREFIX"
