@@ -1,6 +1,6 @@
 cask "wine-dxmt" do
   version "11.4.4"
-  sha256 "af78f79fafe16b9d681ddc7beb6e869126e99486e319e45576fea65a0cb1e0d0"
+  sha256 "7a2c89dd3a393d3ca9cdb61e2d4114674b74dcfd338f0ac6247a6dc845e088a6"
 
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-dxmt-patches-#{version}.tar.xz"
   name "Wine DXMT"
