@@ -10,6 +10,14 @@ cask "wine-dxmt-steam" do
   depends_on cask: "wine-dxmt"
   depends_on macos: ">= :ventura"
 
+  preflight do
+    ohai "Ensuring wine-dxmt is up to date..."
+    system_command "/opt/homebrew/bin/brew",
+      args: ["upgrade", "--cask", "wine-dxmt"],
+      print_stdout: true,
+      print_stderr: true
+  end
+
   postflight do
     wine_dir = "#{ENV["HOME"]}/Wine/dxmt"
     config_dir = "#{ENV["HOME"]}/.config/wine-dxmt"
