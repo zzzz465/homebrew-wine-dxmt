@@ -1,5 +1,5 @@
 cask "wine-dxmt-steam" do
-  version "11.5.2"
+  version "11.6_1"
   sha256 "12e351336db4ab6eae560c1ba5d37f76b91be9ae32799d221345620c66124557"
 
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-dxmt-patches-#{version}.tar.xz"
