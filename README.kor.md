@@ -5,7 +5,7 @@ DJMax, EZ2ON 의 실행이 안되는 버그를 막고, 스팀 설정 및 여러 
 
 자세한 패치 내역은 [TECHNICAL.md](./TECHNICAL.md) 을 참고해주세요.
 
-- wine 11.5
+- wine 11.6_1
 - dxmt v0.74
 
 ## 설치 방법

@@ -1,5 +1,5 @@
 cask "wine-dxmt" do
-  version "11.5.2"
+  version "11.6_1"
   sha256 "12e351336db4ab6eae560c1ba5d37f76b91be9ae32799d221345620c66124557"
 
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-dxmt-patches-#{version}.tar.xz"
@@ -27,18 +27,19 @@ cask "wine-dxmt" do
   end
 
   postflight do
-    wine_dir = "#{ENV["HOME"]}/Wine/dxmt"
+    wine_dir = "#{ENV["HOME"]}/Wine/dxmt/#{version}"
     config_dir = "#{ENV["HOME"]}/.config/wine-dxmt"
 
-    # --- 1. Wine Staging 11.5 from Gcenx ---
+    # --- 1. Wine Staging from Gcenx ---
     unless File.exist?("#{wine_dir}/bin/wine")
-      ohai "Downloading Wine Staging 11.5..."
-      system "/usr/bin/curl", "-sLo", "/tmp/wine-staging-11.5.tar.xz",
-        "https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.5/wine-staging-11.5-osx64.tar.xz"
-      system "/usr/bin/tar", "-xJf", "/tmp/wine-staging-11.5.tar.xz", "-C", "/tmp"
+      ohai "Downloading Wine Staging #{version}..."
+      tarball = "/tmp/wine-staging-#{version}.tar.xz"
+      system "/usr/bin/curl", "-sLo", tarball,
+        "https://github.com/Gcenx/macOS_Wine_builds/releases/download/#{version}/wine-staging-#{version}-osx64.tar.xz"
+      system "/usr/bin/tar", "-xJf", tarball, "-C", "/tmp"
       system "/bin/mkdir", "-p", wine_dir
       system "/bin/cp", "-R", "/tmp/Wine Staging.app/Contents/Resources/wine/", "#{wine_dir}/"
-      system "/bin/rm", "-rf", "/tmp/Wine Staging.app", "/tmp/wine-staging-11.5.tar.xz"
+      system "/bin/rm", "-rf", "/tmp/Wine Staging.app", tarball
     end
 
     # --- 2. DXMT v0.74 overlay ---

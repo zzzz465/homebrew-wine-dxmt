@@ -4,7 +4,7 @@ Patches and workarounds applied to make Wine + DXMT work on macOS Apple Silicon.
 
 ## applied patches
 
-- Wine Staging 11.5 ([Gcenx/macOS_Wine_builds](https://github.com/Gcenx/macOS_Wine_builds))
+- Wine Staging 11.6_1 ([Gcenx/macOS_Wine_builds](https://github.com/Gcenx/macOS_Wine_builds))
   - Gcenx CW-HACK for rosetta 2 [Gcenx/macports-wine](https://github.com/Gcenx/macports-wine)
   - `mfreadwrite.dll` fix for VGA black [`164af86d`](https://github.com/ValveSoftware/wine/commit/164af86dd770f975cdff3e09884f14ebc14b856b) 
 - DXMT v0.74 ([3Shain/dxmt](https://github.com/3Shain/dxmt))

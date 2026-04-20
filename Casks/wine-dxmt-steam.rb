@@ -19,9 +19,11 @@ cask "wine-dxmt-steam" do
   end
 
   postflight do
-    wine_dir = "#{ENV["HOME"]}/Wine/dxmt"
+    # Resolve active wine-dxmt install dir via /usr/local/bin/wine-dxmt symlink
+    # (wine-dxmt cask keeps its binaries under ~/Wine/dxmt/<staging-version>/).
+    wine_dxmt = "/usr/local/bin/wine-dxmt"
+    wine_dir = File.dirname(File.dirname(File.realpath(wine_dxmt)))
     config_dir = "#{ENV["HOME"]}/.config/wine-dxmt"
-    wine_dxmt = "#{wine_dir}/bin/wine-dxmt"
 
     # Use existing prefix from env, or default
     prefix = ENV["WINE_DXMT_PREFIX"] || "#{ENV["HOME"]}/Bottles/DXMT"
@@ -166,7 +168,13 @@ else
   PREFIX="$HOME/Bottles/DXMT"
 fi
 
-WINE_DXMT_DIR="$HOME/Wine/dxmt"
+WINE_DXMT_BIN=$(stat -f '%Y' /usr/local/bin/wine-dxmt 2>/dev/null)
+if [[ -z "$WINE_DXMT_BIN" || ! -f "$WINE_DXMT_BIN" ]]; then
+  echo "Error: /usr/local/bin/wine-dxmt symlink is missing or broken."
+  echo "Reinstall the wine-dxmt cask: brew reinstall --cask wine-dxmt"
+  exit 1
+fi
+WINE_DXMT_DIR=$(dirname "$(dirname "$WINE_DXMT_BIN")")
 LOCK="$CONFIG_DIR/steam-installing.lock"
 STEAM="$PREFIX/drive_c/Program Files (x86)/Steam/steam.exe"
 
@@ -199,7 +207,7 @@ SCRIPT
 
   uninstall delete: [
     "/usr/local/bin/wine-dxmt-steam",
-    "#{ENV["HOME"]}/Wine/dxmt/bin/wine-dxmt-steam",
+    *Dir.glob("#{ENV["HOME"]}/Wine/dxmt/*/bin/wine-dxmt-steam"),
   ]
 
   caveats <<~EOS

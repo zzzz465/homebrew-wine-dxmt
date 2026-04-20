@@ -10,7 +10,7 @@ For technical details on patches applied, see [TECHNICAL.md](./TECHNICAL.md).
 
 ## What's included
 
-- Wine Staging 11.5 + Gcenx CW-HACK patches (Rosetta 2 compatibility)
+- Wine Staging 11.6_1 + Gcenx CW-HACK patches (Rosetta 2 compatibility)
 - DXMT v0.74 (DirectX 11-to-Metal translation)
 - DXMT Metal view frame sync patch (in-game resolution change fix)
 - Proton mfreadwrite patch (video background rendering fix)
