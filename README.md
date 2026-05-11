@@ -13,7 +13,7 @@ For technical details on patches applied, see [TECHNICAL.md](./TECHNICAL.md).
 - Wine Staging 11.8 (custom MacPorts build) + CrossOver CEF injection patch (Steam UI fix)
 - Gcenx CW-HACK for Rosetta 2 compatibility
 - Proton mfreadwrite patch (VGA/BGA video background rendering fix)
-- DXMT v0.74 (DirectX 11-to-Metal translation)
+- DXMT v0.80 (DirectX 11-to-Metal translation)
 - DXMT Metal view frame sync patch (in-game resolution change fix)
 - GLib/GStreamer system library symlinks (75% loading freeze fix)
 

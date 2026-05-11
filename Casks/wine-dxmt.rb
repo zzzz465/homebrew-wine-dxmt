@@ -1,5 +1,5 @@
 cask "wine-dxmt" do
-  version "11.8_cw1"
+  version "11.8_cw2"
   sha256 "868a377ff0f1d0c0d77b9be2762362450433634cc284959ad8f879b3b27caea9"
 
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-staging-#{version}-osx64.tar.xz"
@@ -40,17 +40,17 @@ cask "wine-dxmt" do
         "#{wine_dir}/"
     end
 
-    # --- 2. DXMT v0.74 overlay ---
-    ohai "Downloading DXMT v0.74..."
-    system "/usr/bin/curl", "-sLo", "/tmp/dxmt-v0.74-builtin.tar.gz",
-      "https://github.com/3Shain/dxmt/releases/download/v0.74/dxmt-v0.74-builtin.tar.gz"
-    system "/usr/bin/tar", "-xzf", "/tmp/dxmt-v0.74-builtin.tar.gz", "-C", "/tmp"
+    # --- 2. DXMT v0.80 overlay ---
+    ohai "Downloading DXMT v0.80..."
+    system "/usr/bin/curl", "-sLo", "/tmp/dxmt-v0.80-builtin.tar.gz",
+      "https://github.com/3Shain/dxmt/releases/download/v0.80/dxmt-v0.80-builtin.tar.gz"
+    system "/usr/bin/tar", "-xzf", "/tmp/dxmt-v0.80-builtin.tar.gz", "-C", "/tmp"
     %w[x86_64-unix x86_64-windows i386-windows].each do |arch|
-      Dir.glob("/tmp/v0.74/#{arch}/*").each do |f|
+      Dir.glob("/tmp/v0.80/#{arch}/*").each do |f|
         system "/bin/cp", "-f", f, "#{wine_dir}/lib/wine/#{arch}/"
       end
     end
-    system "/bin/rm", "-rf", "/tmp/v0.74", "/tmp/dxmt-v0.74-builtin.tar.gz"
+    system "/bin/rm", "-rf", "/tmp/v0.80", "/tmp/dxmt-v0.80-builtin.tar.gz"
 
     # --- 3. Symlink GLib/GStreamer libs to system x86_64 versions ---
     # Bundled GLib 2.82 conflicts with brew x86_64 GStreamer (GLib 2.88).

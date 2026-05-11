@@ -1,5 +1,5 @@
 cask "wine-dxmt-steam" do
-  version "11.8_cw1"
+  version "11.8_cw2"
   sha256 "868a377ff0f1d0c0d77b9be2762362450433634cc284959ad8f879b3b27caea9"
 
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-staging-#{version}-osx64.tar.xz"
