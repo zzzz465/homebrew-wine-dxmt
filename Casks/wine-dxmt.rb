@@ -1,8 +1,8 @@
 cask "wine-dxmt" do
-  version "11.6_1"
-  sha256 "12e351336db4ab6eae560c1ba5d37f76b91be9ae32799d221345620c66124557"
+  version "11.8_cw1"
+  sha256 "868a377ff0f1d0c0d77b9be2762362450433634cc284959ad8f879b3b27caea9"
 
-  url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-dxmt-patches-#{version}.tar.xz"
+  url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-staging-#{version}-osx64.tar.xz"
   name "Wine DXMT"
   desc "Patched Wine Staging + DXMT for macOS gaming (DX11-to-Metal)"
   homepage "https://github.com/zzzz465/homebrew-wine-dxmt"
@@ -30,16 +30,14 @@ cask "wine-dxmt" do
     wine_dir = "#{ENV["HOME"]}/Wine/dxmt/#{version}"
     config_dir = "#{ENV["HOME"]}/.config/wine-dxmt"
 
-    # --- 1. Wine Staging from Gcenx ---
+    # --- 1. Install Wine Staging (custom build w/ CrossOver CEF injection patch) ---
+    # Source: staged tarball has `Wine Staging.app/Contents/Resources/wine/` layout.
     unless File.exist?("#{wine_dir}/bin/wine")
-      ohai "Downloading Wine Staging #{version}..."
-      tarball = "/tmp/wine-staging-#{version}.tar.xz"
-      system "/usr/bin/curl", "-sLo", tarball,
-        "https://github.com/Gcenx/macOS_Wine_builds/releases/download/#{version}/wine-staging-#{version}-osx64.tar.xz"
-      system "/usr/bin/tar", "-xJf", tarball, "-C", "/tmp"
+      ohai "Installing Wine Staging #{version}..."
       system "/bin/mkdir", "-p", wine_dir
-      system "/bin/cp", "-R", "/tmp/Wine Staging.app/Contents/Resources/wine/", "#{wine_dir}/"
-      system "/bin/rm", "-rf", "/tmp/Wine Staging.app", tarball
+      system "/bin/cp", "-R",
+        "#{staged_path}/Wine Staging.app/Contents/Resources/wine/",
+        "#{wine_dir}/"
     end
 
     # --- 2. DXMT v0.74 overlay ---
@@ -54,19 +52,9 @@ cask "wine-dxmt" do
     end
     system "/bin/rm", "-rf", "/tmp/v0.74", "/tmp/dxmt-v0.74-builtin.tar.gz"
 
-    # --- 3. Proton mfreadwrite patch (VGA/BGA video backgrounds) ---
-    # Only mfreadwrite.dll needs patching. Do NOT override winemac.so/drv or
-    # winemetal.so/dll — the Gcenx prebuilt already includes CX HACK 23950
-    # (window resize fix) and DXMT v0.74 provides the correct winemetal binaries.
-    ohai "Applying mfreadwrite patch..."
-    mfreadwrite = "#{staged_path}/x86_64-windows/mfreadwrite.dll"
-    if File.exist?(mfreadwrite)
-      system "/bin/cp", "-f", mfreadwrite, "#{wine_dir}/lib/wine/x86_64-windows/"
-    end
-
-    # --- 4. Symlink GLib/GStreamer libs to system x86_64 versions ---
-    # Wine bundles outdated GLib that conflicts with system GStreamer.
-    # Deleting alone breaks @rpath resolution; symlink to system libs instead.
+    # --- 3. Symlink GLib/GStreamer libs to system x86_64 versions ---
+    # Bundled GLib 2.82 conflicts with brew x86_64 GStreamer (GLib 2.88).
+    # Deleting alone breaks @rpath resolution; symlink to brew libs instead.
     unix_dir = "#{wine_dir}/lib/wine/x86_64-unix"
     %w[
       libglib-2.0.0.dylib libgobject-2.0.0.dylib libgmodule-2.0.0.dylib
@@ -80,7 +68,7 @@ cask "wine-dxmt" do
       system "/bin/ln", "-sf", system_lib, target if File.exist?(system_lib)
     end
 
-    # --- 5. x86_64 Homebrew + GStreamer ---
+    # --- 4. x86_64 Homebrew + GStreamer (for codec plugins) ---
     unless File.exist?("/usr/local/bin/brew")
       ohai "Installing x86_64 Homebrew (required for GStreamer)..."
       system "/usr/bin/arch", "-x86_64", "/bin/bash", "-c",
@@ -91,11 +79,11 @@ cask "wine-dxmt" do
       system "arch", "-x86_64", "/usr/local/bin/brew", "install", "gstreamer"
     end
 
-    # --- 6. Quarantine removal + ad-hoc codesign ---
+    # --- 5. Quarantine removal + ad-hoc codesign ---
     system "/usr/bin/xattr", "-drs", "com.apple.quarantine", wine_dir
     system "/usr/bin/codesign", "--force", "--deep", "-s", "-", "#{wine_dir}/bin/wine"
 
-    # --- 7. Create wine-dxmt wrapper ---
+    # --- 6. Create wine-dxmt wrapper ---
     system "/bin/mkdir", "-p", config_dir
     wrapper = "#{wine_dir}/bin/wine-dxmt"
     File.write(wrapper, <<~SCRIPT)
@@ -129,7 +117,7 @@ cask "wine-dxmt" do
     SCRIPT
     system "/bin/chmod", "+x", wrapper
 
-    # --- 8. Symlink to PATH ---
+    # --- 7. Symlink to PATH ---
     system "/bin/mkdir", "-p", "/usr/local/bin"
     system "/bin/ln", "-sf", wrapper, "/usr/local/bin/wine-dxmt"
   end

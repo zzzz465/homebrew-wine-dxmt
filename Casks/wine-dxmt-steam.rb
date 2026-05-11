@@ -1,8 +1,8 @@
 cask "wine-dxmt-steam" do
-  version "11.6_1"
-  sha256 "12e351336db4ab6eae560c1ba5d37f76b91be9ae32799d221345620c66124557"
+  version "11.8_cw1"
+  sha256 "868a377ff0f1d0c0d77b9be2762362450433634cc284959ad8f879b3b27caea9"
 
-  url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-dxmt-patches-#{version}.tar.xz"
+  url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-staging-#{version}-osx64.tar.xz"
   name "Wine DXMT with Steam"
   desc "Patched Wine Staging + DXMT + Steam prefix setup for macOS gaming"
   homepage "https://github.com/zzzz465/homebrew-wine-dxmt"

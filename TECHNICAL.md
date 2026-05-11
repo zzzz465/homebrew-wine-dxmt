@@ -4,9 +4,10 @@ Patches and workarounds applied to make Wine + DXMT work on macOS Apple Silicon.
 
 ## applied patches
 
-- Wine Staging 11.6_1 ([Gcenx/macOS_Wine_builds](https://github.com/Gcenx/macOS_Wine_builds))
-  - Gcenx CW-HACK for rosetta 2 [Gcenx/macports-wine](https://github.com/Gcenx/macports-wine)
-  - `mfreadwrite.dll` fix for VGA black [`164af86d`](https://github.com/ValveSoftware/wine/commit/164af86dd770f975cdff3e09884f14ebc14b856b) 
+- Wine Staging 11.8 — custom build via MacPorts (Gcenx [macports-wine](https://github.com/Gcenx/macports-wine) fork + additional patches)
+  - CrossOver CEF helper injection patch (sourced from [Gcenx/game-porting-toolkit](https://github.com/Gcenx/game-porting-toolkit)): adds `--in-process-gpu`/`--disable-gpu`/`--no-sandbox` to `steamwebhelper.exe` and other Chromium-based helpers so the Steam UI renders under winemac + DXMT (upstream Gcenx tarball does NOT include this).
+  - Proton `mfreadwrite/reader.c` fix ([`164af86d`](https://github.com/ValveSoftware/wine/commit/164af86dd770f975cdff3e09884f14ebc14b856b)) — source patch via MacPorts (VGA/BGA video background rendering fix for DJMax/EZ2ON).
+  - Gcenx CW-HACK for Rosetta 2 (inherited from the MacPorts Portfile)
 - DXMT v0.74 ([3Shain/dxmt](https://github.com/3Shain/dxmt))
   - DXMT MetalViewFrame fix for screen resolution bug [zzzz465/dxmt](https://github.com/zzzz465/dxmt/tree/fix/resizing)
 - GLib/GStreamer version conflict change (2.82 -> 2.88) for game stuck at 75% on startup
