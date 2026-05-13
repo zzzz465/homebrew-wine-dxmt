@@ -1,10 +1,10 @@
 cask "wine-dxmt" do
-  version "11.8_cw2"
-  sha256 "868a377ff0f1d0c0d77b9be2762362450433634cc284959ad8f879b3b27caea9"
+  version "11.8_mm1"
+  sha256 "236e517c12b8adf2092607742c4337632f7b03ffc06e4341bc5fc0a8f0160a9f"
 
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-staging-#{version}-osx64.tar.xz"
   name "Wine DXMT"
-  desc "Patched Wine Staging + DXMT for macOS gaming (DX11-to-Metal)"
+  desc "Wine Staging (macports custom) + DXMT for macOS gaming (DX11-to-Metal, UE5.6 patched)"
   homepage "https://github.com/zzzz465/homebrew-wine-dxmt"
 
   depends_on macos: ">= :ventura"
@@ -24,24 +24,37 @@ cask "wine-dxmt" do
       system_command "/usr/sbin/softwareupdate", args: ["--install-rosetta", "--agree-to-license"]
     end
 
+    # --- Ensure x86_64 Homebrew is installed (needed for GStreamer) ---
+    unless File.exist?("/usr/local/bin/brew")
+      ohai "Installing x86_64 Homebrew..."
+      system_command "/usr/bin/arch", args: [
+        "-x86_64", "/bin/bash", "-c",
+        'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+      ]
+    end
   end
 
   postflight do
-    wine_dir = "#{ENV["HOME"]}/Wine/dxmt/#{version}"
+    wine_dir = "#{ENV["HOME"]}/Wine/dxmt"
     config_dir = "#{ENV["HOME"]}/.config/wine-dxmt"
+    tap_dir = File.expand_path("..", __dir__)
 
-    # --- 1. Install Wine Staging (custom build w/ CrossOver CEF injection patch) ---
-    # Source: staged tarball has `Wine Staging.app/Contents/Resources/wine/` layout.
+    # --- 1. Wine Staging 11.8 custom build (macports + CW-HACK + DXMT adapter +
+    #        winemac resize fix). Built from zzzz465/macports-wine fork; tarball
+    #        layout matches Gcenx's Wine Staging.app/Contents/Resources/wine/. ---
     unless File.exist?("#{wine_dir}/bin/wine")
-      ohai "Installing Wine Staging #{version}..."
+      ohai "Installing Wine Staging 11.8_mm1..."
       system "/bin/mkdir", "-p", wine_dir
       system "/bin/cp", "-R",
         "#{staged_path}/Wine Staging.app/Contents/Resources/wine/",
         "#{wine_dir}/"
     end
 
-    # --- 2. DXMT v0.80 overlay ---
-    ohai "Downloading DXMT v0.80..."
+    # --- 2. DXMT v0.80 prebuilt overlay (NVIDIA stubs + 32-bit DXMT only) ---
+    # Our v0.80 build (step 3) overwrites all 64-bit DXMT files. This step
+    # contributes i386-windows/* (32-bit DXMT) and x86_64-windows/nv{api64,ngx}.dll
+    # (NVIDIA stubs).
+    ohai "Downloading DXMT v0.80 prebuilt..."
     system "/usr/bin/curl", "-sLo", "/tmp/dxmt-v0.80-builtin.tar.gz",
       "https://github.com/3Shain/dxmt/releases/download/v0.80/dxmt-v0.80-builtin.tar.gz"
     system "/usr/bin/tar", "-xzf", "/tmp/dxmt-v0.80-builtin.tar.gz", "-C", "/tmp"
@@ -52,38 +65,41 @@ cask "wine-dxmt" do
     end
     system "/bin/rm", "-rf", "/tmp/v0.80", "/tmp/dxmt-v0.80-builtin.tar.gz"
 
-    # --- 3. Symlink GLib/GStreamer libs to system x86_64 versions ---
-    # Bundled GLib 2.82 conflicts with brew x86_64 GStreamer (GLib 2.88).
-    # Deleting alone breaks @rpath resolution; symlink to brew libs instead.
+    # --- 3. DXMT v0.80 patched binaries (calibration + frame sync fix for UE5.6) ---
+    # See patches/dxmt-v0.80-patches/ in tap.
+    # Patches applied to DXMT v0.80 source:
+    #   - src/d3d11/d3d11_query.cpp: latest_value_=1 (calibration assert fix)
+    #   - src/d3d11/d3d11_query.cpp: stale fallback returns S_OK
+    #   - src/d3d11/d3d11_context_imm.cpp: TIMESTAMP_DISJOINT hr=S_OK
+    #   - src/d3d11/d3d11_query.hpp: Undefined→Signaled
+    #   - src/winemetal/unix/winemetal_unix.c: frame sync fix in _MetalLayer_setProps
+    ohai "Applying DXMT v0.80 UE5.6-patched binaries..."
+    dxmt_patches_dir = "#{tap_dir}/patches/dxmt-v0.80-patches"
+    %w[x86_64-unix x86_64-windows].each do |arch|
+      Dir.glob("#{dxmt_patches_dir}/#{arch}/*").each do |f|
+        system "/bin/cp", "-f", f, "#{wine_dir}/lib/wine/#{arch}/"
+      end
+    end
+
+    # --- 4. Remove GLib conflict dylibs ---
+    # Bundled GLib conflicts with brew x86_64 GStreamer.
     unix_dir = "#{wine_dir}/lib/wine/x86_64-unix"
     %w[
       libglib-2.0.0.dylib libgobject-2.0.0.dylib libgmodule-2.0.0.dylib
       libgio-2.0.0.dylib libintl.8.dylib
-      libgstvideo-1.0.0.dylib libgstaudio-1.0.0.dylib libgstbase-1.0.0.dylib
-      libgsttag-1.0.0.dylib libgstreamer-1.0.0.dylib libgstpbutils-1.0.0.dylib
-    ].each do |lib|
-      target = "#{unix_dir}/#{lib}"
-      system_lib = "/usr/local/lib/#{lib}"
-      File.delete(target) if File.exist?(target) || File.symlink?(target)
-      system "/bin/ln", "-sf", system_lib, target if File.exist?(system_lib)
-    end
+    ].each { |lib| File.delete("#{unix_dir}/#{lib}") if File.exist?("#{unix_dir}/#{lib}") }
 
-    # --- 4. x86_64 Homebrew + GStreamer (for codec plugins) ---
-    unless File.exist?("/usr/local/bin/brew")
-      ohai "Installing x86_64 Homebrew (required for GStreamer)..."
-      system "/usr/bin/arch", "-x86_64", "/bin/bash", "-c",
-        '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-    end
+    # --- 5. x86_64 GStreamer ---
     unless File.exist?("/usr/local/lib/gstreamer-1.0")
       ohai "Installing x86_64 GStreamer..."
       system "arch", "-x86_64", "/usr/local/bin/brew", "install", "gstreamer"
     end
 
-    # --- 5. Quarantine removal + ad-hoc codesign ---
+    # --- 6. Quarantine removal + ad-hoc codesign ---
     system "/usr/bin/xattr", "-drs", "com.apple.quarantine", wine_dir
     system "/usr/bin/codesign", "--force", "--deep", "-s", "-", "#{wine_dir}/bin/wine"
 
-    # --- 6. Create wine-dxmt wrapper ---
+    # --- 7. Create wine-dxmt wrapper ---
     system "/bin/mkdir", "-p", config_dir
     wrapper = "#{wine_dir}/bin/wine-dxmt"
     File.write(wrapper, <<~SCRIPT)
@@ -109,15 +125,13 @@ cask "wine-dxmt" do
       export WINEPREFIX="$PREFIX"
       export WINEESYNC=1
       export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER=1
-      export GST_PLUGIN_PATH="$WINE_DXMT_DIR/lib/wine/x86_64-unix/gstreamer-1.0:/usr/local/lib/gstreamer-1.0"
-      export WINEDEBUG="${WINEDEBUG:--fixme,-err}"
-      export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}winedbg.exe=d"
+      export GST_PLUGIN_PATH="/usr/local/lib/gstreamer-1.0"
 
       exec "$WINE_DXMT_DIR/bin/wine" "$@"
     SCRIPT
     system "/bin/chmod", "+x", wrapper
 
-    # --- 7. Symlink to PATH ---
+    # --- 8. Symlink to PATH ---
     system "/bin/mkdir", "-p", "/usr/local/bin"
     system "/bin/ln", "-sf", wrapper, "/usr/local/bin/wine-dxmt"
   end
@@ -131,11 +145,8 @@ cask "wine-dxmt" do
   caveats <<~EOS
     Wine DXMT installed to ~/Wine/dxmt/
 
-    With existing Steam prefix:
+    With existing prefix:
       wine-dxmt --set-prefix /path/to/your/prefix
-      wine-dxmt steam.exe -applaunch 960170
-
-    New prefix setup:
-      brew install --cask wine-dxmt-steam
+      wine-dxmt your_game.exe
   EOS
 end
