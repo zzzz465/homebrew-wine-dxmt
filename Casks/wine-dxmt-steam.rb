@@ -1,7 +1,9 @@
 cask "wine-dxmt-steam" do
-  version "11.8_cw2"
-  sha256 "868a377ff0f1d0c0d77b9be2762362450433634cc284959ad8f879b3b27caea9"
+  version "11.8_mm1"
+  sha256 "236e517c12b8adf2092607742c4337632f7b03ffc06e4341bc5fc0a8f0160a9f"
 
+  # Same tarball as wine-dxmt — postflight only uses /usr/local/bin/wine-dxmt
+  # symlink (provided by wine-dxmt cask dependency) and the WINE prefix.
   url "https://github.com/zzzz465/homebrew-wine-dxmt/releases/download/v#{version}/wine-staging-#{version}-osx64.tar.xz"
   name "Wine DXMT with Steam"
   desc "Patched Wine Staging + DXMT + Steam prefix setup for macOS gaming"
