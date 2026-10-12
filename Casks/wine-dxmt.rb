@@ -7,7 +7,7 @@ cask "wine-dxmt" do
   desc "Wine Staging (macports custom) + DXMT for macOS gaming (DX11-to-Metal, UE5.6 patched)"
   homepage "https://github.com/zzzz465/homebrew-wine-dxmt"
 
-  depends_on macos: ">= :ventura"
+  depends_on macos: :ventura
 
   preflight do
     # --- Ensure Xcode CLI Tools are installed (needed for codesign) ---
