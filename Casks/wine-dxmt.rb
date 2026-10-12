@@ -11,7 +11,7 @@ cask "wine-dxmt" do
 
   preflight do
     # --- Ensure Xcode CLI Tools are installed (needed for codesign) ---
-    unless system_command("/usr/bin/xcode-select", args: ["-p"], print_stderr: false).exit_status.zero?
+    unless system_command("/usr/bin/xcode-select", args: ["-p"], print_stderr: false, must_succeed: false).exit_status.zero?
       ohai "Installing Xcode Command Line Tools..."
       system_command "/usr/bin/xcode-select", args: ["--install"]
       ohai "Please complete the Xcode CLI Tools installation, then re-run: brew install --cask wine-dxmt"
@@ -19,7 +19,7 @@ cask "wine-dxmt" do
     end
 
     # --- Ensure Rosetta 2 is installed (needed for x86_64 Wine) ---
-    unless system_command("/usr/bin/arch", args: ["-x86_64", "/usr/bin/true"], print_stderr: false).exit_status.zero?
+    unless system_command("/usr/bin/arch", args: ["-x86_64", "/usr/bin/true"], print_stderr: false, must_succeed: false).exit_status.zero?
       ohai "Installing Rosetta 2..."
       system_command "/usr/sbin/softwareupdate", args: ["--install-rosetta", "--agree-to-license"]
     end
