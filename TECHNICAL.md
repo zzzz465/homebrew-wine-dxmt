@@ -12,6 +12,7 @@ Patches and workarounds applied to make Wine + DXMT work on macOS Apple Silicon.
   - DXMT MetalViewFrame fix for screen resolution bug [zzzz465/dxmt](https://github.com/zzzz465/dxmt/tree/fix/resizing)
 - GLib/GStreamer version conflict change (2.82 -> 2.88) for game stuck at 75% on startup
   - Libraries: `libglib-2.0.0`, `libgobject-2.0.0`, `libgmodule-2.0.0`, `libgio-2.0.0`, `libintl.8`, `libgstvideo-1.0.0`, `libgstaudio-1.0.0`, `libgstbase-1.0.0`, `libgsttag-1.0.0`, `libgstreamer-1.0.0`, `libgstpbutils-1.0.0`
+  - These (plus `libffi.7`, `liborc-0.4.0`, `libpcre2-8.0`, `libz.1`) now point to the official GStreamer universal framework (1.28.8, GLib 2.82.4), expanded into `~/Wine/dxmt/gstreamer` by the cask. x86_64 Homebrew can no longer be installed, so the brew GLib 2.88 is no longer used.
 
 ## Environment
 
@@ -19,6 +20,8 @@ Patches and workarounds applied to make Wine + DXMT work on macOS Apple Silicon.
 |----------|-------|---------|
 | `WINEESYNC` | `1` | esync for performance |
 | `WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER` | `1` | DXMT setting |
-| `GST_PLUGIN_PATH` | Wine internal + `/usr/local/lib/gstreamer-1.0` | H.264 decoder |
+| `GST_PLUGIN_SYSTEM_PATH_1_0` | `~/Wine/dxmt/gstreamer/lib/gstreamer-1.0` | bundled plugins only (H.264, VP9 decoders) |
+| `GST_PLUGIN_SCANNER_1_0` | `~/Wine/dxmt/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner` | bundled plugin scanner |
+| `GST_REGISTRY_1_0` | `~/.config/wine-dxmt/gstreamer-registry.x86_64.bin` | registry separate from other GStreamer installs |
 | `WINEDEBUG` | `-fixme,-err` | suppress noise (overridable) |
 | `WINEDLLOVERRIDES` | `winedbg.exe=d` | disable crash dialog |

@@ -23,15 +23,6 @@ cask "wine-dxmt" do
       ohai "Installing Rosetta 2..."
       system_command "/usr/sbin/softwareupdate", args: ["--install-rosetta", "--agree-to-license"]
     end
-
-    # --- Ensure x86_64 Homebrew is installed (needed for GStreamer) ---
-    unless File.exist?("/usr/local/bin/brew")
-      ohai "Installing x86_64 Homebrew..."
-      system_command "/usr/bin/arch", args: [
-        "-x86_64", "/bin/bash", "-c",
-        'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
-      ]
-    end
   end
 
   postflight do
@@ -81,30 +72,59 @@ cask "wine-dxmt" do
       end
     end
 
-    # --- 4. Symlink bundled GLib/GStreamer dylibs to brew x86_64 versions ---
+    # --- 4. Bundle x86_64 GStreamer from the official universal framework pkg ---
+    # Homebrew no longer installs on Intel macOS nor builds Intel bottles, so
+    # the x86_64 brew GStreamer is gone. The pkg is expanded (not installed) into
+    # wine_dir/gstreamer; its dylibs are @rpath-relocatable, so no sudo and no
+    # /Library/Frameworks. Components cover winegstreamer's elements (decodebin,
+    # videoconvert, audioconvert, audioresample, deinterlace, videoflip) plus
+    # H.264 (vtdec, avdec_h264) and VP9 (vp9dec) decoders.
+    gst_version = "1.28.8"
+    gst_pkg_sha256 = "d371ab04a7632713626836c2fc234e863cc98484c74c473eba99b0fbd9b3a3fe"
+    gst_components = %w[
+      base-system-1.0 base-crypto gstreamer-1.0-core gstreamer-1.0-playback
+      gstreamer-1.0-effects gstreamer-1.0-codecs gstreamer-1.0-libav gstreamer-1.0-system
+    ]
+    gst_dir = "#{wine_dir}/gstreamer"
+    unless File.exist?("#{gst_dir}/lib/libgstreamer-1.0.0.dylib")
+      ohai "Bundling GStreamer #{gst_version} into #{gst_dir}..."
+      Dir.mktmpdir do |tmp|
+        pkg = "#{tmp}/gstreamer.pkg"
+        system "/usr/bin/curl", "-fsSLo", pkg,
+               "https://gstreamer.freedesktop.org/data/pkg/osx/#{gst_version}/gstreamer-1.0-#{gst_version}-universal.pkg",
+               exception: true
+        actual_sha256 = Pathname(pkg).sha256
+        raise "GStreamer pkg checksum mismatch: #{actual_sha256}" if actual_sha256 != gst_pkg_sha256
+
+        system "/usr/sbin/pkgutil", "--expand-full", pkg, "#{tmp}/expanded", exception: true
+        system "/bin/mkdir", "-p", gst_dir, exception: true
+        gst_components.each do |component|
+          payload = "#{tmp}/expanded/#{component}-#{gst_version}-universal.pkg/Payload/."
+          system "/bin/cp", "-R", payload, gst_dir, exception: true
+        end
+      end
+    end
+
+    # --- 5. Symlink GLib/GStreamer dylibs to the bundled GStreamer ---
     # winegstreamer.so resolves these via @rpath (LC_RPATH = @loader_path/ +
     # @loader_path/../..), so both lib/ and lib/wine/x86_64-unix/ must point
-    # to brew. Deleting them breaks H.264/VP9 decoding (DJMax BGA video, etc).
-    # Bundled versions are also older and conflict with system GStreamer
-    # plugins (decodebin creation fail, GstCocoaApplicationDelegate duplicate).
+    # to the bundle. Deleting them breaks H.264/VP9 decoding (DJMax BGA video, etc).
+    # The tarball's versions are older and conflict with the plugins (decodebin
+    # creation fail, GstCocoaApplicationDelegate duplicate), so the whole
+    # dependency closure (incl. ffi, orc, pcre2, z) comes from the bundle.
     gst_libs = %w[
       libgstvideo-1.0.0.dylib libgstaudio-1.0.0.dylib libgstbase-1.0.0.dylib
       libgsttag-1.0.0.dylib libgstreamer-1.0.0.dylib libgstpbutils-1.0.0.dylib
       libgobject-2.0.0.dylib libglib-2.0.0.dylib libgmodule-2.0.0.dylib
-      libgio-2.0.0.dylib libintl.8.dylib
+      libgio-2.0.0.dylib libintl.8.dylib libffi.7.dylib liborc-0.4.0.dylib
+      libpcre2-8.0.dylib libz.1.dylib
     ]
     ["#{wine_dir}/lib", "#{wine_dir}/lib/wine/x86_64-unix"].each do |dir|
       gst_libs.each do |lib|
         target = "#{dir}/#{lib}"
         File.delete(target) if File.exist?(target) || File.symlink?(target)
-        system "/bin/ln", "-sf", "/usr/local/lib/#{lib}", target
+        system "/bin/ln", "-sf", "#{gst_dir}/lib/#{lib}", target
       end
-    end
-
-    # --- 5. x86_64 GStreamer ---
-    unless File.exist?("/usr/local/lib/gstreamer-1.0")
-      ohai "Installing x86_64 GStreamer..."
-      system "arch", "-x86_64", "/usr/local/bin/brew", "install", "gstreamer"
     end
 
     # --- 6. Quarantine removal + ad-hoc codesign ---
@@ -140,18 +160,27 @@ cask "wine-dxmt" do
       export WINEESYNC=0
       export WINEMSYNC=1
       export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER=1
-      export GST_PLUGIN_PATH="/usr/local/lib/gstreamer-1.0"
+      # Use only the bundled GStreamer plugins, with a registry separate from
+      # any other GStreamer install on this Mac.
+      unset GST_PLUGIN_PATH GST_PLUGIN_PATH_1_0
+      export GST_PLUGIN_SYSTEM_PATH_1_0="$WINE_DXMT_DIR/gstreamer/lib/gstreamer-1.0"
+      export GST_PLUGIN_SCANNER_1_0="$WINE_DXMT_DIR/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner"
+      export GST_REGISTRY_1_0="$CONFIG_DIR/gstreamer-registry.x86_64.bin"
 
       exec "$WINE_DXMT_DIR/bin/wine" "$@"
     SCRIPT
     system "/bin/chmod", "+x", wrapper
 
     # --- 8. Symlink to PATH ---
+    # /usr/local/bin is only user-writable when something (formerly x86_64
+    # Homebrew) has taken ownership of it, so also link into Homebrew's bin.
+    system "/bin/ln", "-sf", wrapper, "#{HOMEBREW_PREFIX}/bin/wine-dxmt"
     system "/bin/mkdir", "-p", "/usr/local/bin"
     system "/bin/ln", "-sf", wrapper, "/usr/local/bin/wine-dxmt"
   end
 
   uninstall delete: [
+    "#{HOMEBREW_PREFIX}/bin/wine-dxmt",
     "/usr/local/bin/wine-dxmt",
     "#{ENV["HOME"]}/Wine/dxmt",
     "#{ENV["HOME"]}/.config/wine-dxmt",
