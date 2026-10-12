@@ -15,7 +15,7 @@ For technical details on patches applied, see [TECHNICAL.md](./TECHNICAL.md).
 - Proton mfreadwrite patch (VGA/BGA video background rendering fix)
 - DXMT v0.80 (DirectX 11-to-Metal translation)
 - DXMT Metal view frame sync patch (in-game resolution change fix)
-- GLib/GStreamer system library symlinks (75% loading freeze fix)
+- Bundled official GStreamer framework for GLib/GStreamer (75% loading freeze fix, H.264/VP9 video)
 
 ## Install
 
